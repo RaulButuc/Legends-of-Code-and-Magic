@@ -136,12 +136,67 @@ class State {
     
 };
 
-class Action {
-    
+class Card {
+
     public:
-        static std::string PICK;
-        static std::string PASS;
-    
+        Card() { }
+
+        Card(int _number, int _instanceId, int _location, int _type, int _cost, int _attack,
+             int _defense, std::string _ability, int _myHealthChange, int _opponentHealthChange,
+             int _draws) : 
+             number(_number), instanceId(_instanceId), location(_location), type(_type), cost(_cost),
+             attack(_attack), defense(_defense), ability(_ability), myHealthChange(_myHealthChange),
+             opponentHealthChange(_opponentHealthChange), draws(_draws) { }
+
+        auto getNumber() const -> int {
+            return this->number;
+        }
+
+        auto getInstanceId() const -> int {
+            return this->instanceId;
+        }
+
+        auto getLocation() const -> int {
+            return this->location;
+        }
+
+        auto getType() const -> int {
+            return this->type;
+        }
+
+        auto getCost() const -> int {
+            return this->cost;
+        }
+
+        auto getAttack() const -> int {
+            return this->attack;
+        }
+
+        auto getDefense() const -> int {
+            return this->defense;
+        }
+
+        auto getAbility() const -> std::string {
+            return this->ability;
+        }
+
+        auto getMyHealthChanges() const -> int {
+            return this->myHealthChange;
+        }
+
+        auto getOpponentHealthChange() const -> int {
+            return this->opponentHealthChange;
+        }
+
+        auto getDraw() const -> int {
+            return this->draw;
+        }
+
+    private:
+        int number, instanceId, location, type, cost, attack, defense;
+        std::string ability;
+        int myHealthChange, opponentHealthChange, draws;
+
 };
 
 class Game {
@@ -153,6 +208,7 @@ class Game {
         static bool running;
         static Players players;
         static State state;
+        static std::vector<Card> cards;
         
         static auto readDataForCurrentTurn() -> void {
             currentTurn++;
@@ -170,9 +226,6 @@ class Game {
                 opponentCards.push_back(opponentCard);
             }
             int cardCount;
-            std::vector<int> cardNumbers, instanceIds, locations, cardTypes, costs, attacks, defenses;
-            std::vector<std::string> abilities;
-            std::vector<int> myHealthChanges, opponentHealthChanges, cardDraws;
             std::cin >> cardCount; std::cin.ignore();
             for (int i = 0; i < cardCount; ++i) {
                 int _cardNumber, _instanceId, _location, _cardType, _cost, _attack, _defense;
@@ -181,18 +234,8 @@ class Game {
                 std::cin >> _cardNumber >> _instanceId >> _location >> _cardType >> _cost
                          >> _attack >> _defense >> _abilities >> _myHealthChange
                          >> _opponentHealthChange >> _cardDraw; std::cin.ignore();
-                cardNumbers.push_back(_cardNumber);
-                instanceIds.push_back(_instanceId);
-                locations.push_back(_location);
-                cardTypes.push_back(_cardType);
-                costs.push_back(_cost);
-                attacks.push_back(_attack);
-                defenses.push_back(_defense);
-                abilities.push_back(_abilities);
-                myHealthChanges.push_back(_myHealthChange);
-                opponentHealthChanges.push_back(_opponentHealthChange);
-                cardDraws.push_back(_cardDraw);
-                
+                cards.push_back(Card(_cardNumber, _instanceId, _location, _cardType, _cost, _attack,
+                                     _defense, _abilities, _myHealthChange, _opponentHealthChange, _draw));                
             }
             state = State(opponentHand, opponentActions, opponentCards, cardCount, cardNumbers,
                           instanceIds, locations, cardTypes, costs, attacks, defenses, abilities,
@@ -205,12 +248,35 @@ class Game {
     
 };
 
+class Action {
+    
+    public:
+        static auto draftingStrategy() -> void {
+            if (Game::state.cardCount != 3) {
+                return;
+            }
+
+        }
+
+        static auto gameplayStrategy() -> void {
+            // TODO: choose between aggressive or defensive based on a deterministic approach
+        }
+
+        static auto aggressiveStrategy() -> void {
+            // TODO: maximize the damage output towards the enemy player (ignore enemy cards)
+        }
+
+        static auto defensiveStrategy() -> void {
+            // TODO: minimize the damage taken from the enemy player's cards
+        }
+    
+};
+
 int Game::currentTurn = 0;
 bool Game::running = true;
 Players Game::players = Players(Player(), Player());
 State Game::state = State();
-std::string Action::PICK = "PICK 1";
-std::string Action::PASS = "PASS";
+std::vector<Card> Game::cards = std::vector<Card>();
 
 Game game;
 
@@ -218,10 +284,10 @@ auto main() -> int {
     while (Game::running) {
         Game::readDataForCurrentTurn();
         if (Game::isDraftingPhase()) {
-            std::cout << Action::PICK << std::endl;
+            std::cout << Action::draftingStrategy() << std::endl;
         }
         else {
-            std::cout << Action::PASS << std::endl;
+            std::cout << Action::gameplayStrategy()<< std::endl;
         }
     }
 }
