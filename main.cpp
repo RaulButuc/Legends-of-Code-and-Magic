@@ -49,93 +49,6 @@ class Player {
 
 typedef std::pair<Player, Player> Players;
 
-class State {
-    
-    public:
-        State() { }
-    
-        State(int _opponentHand, int _opponentActions, std::vector<std::string> _opponentCards,
-              int _cardCount, std::vector<int> _cardNumbers, std::vector<int> _instanceIds,
-              std::vector<int> _locations, std::vector<int> _cardTypes, std::vector<int> _costs,
-              std::vector<int> _attacks, std::vector<int> _defenses,
-              std::vector<std::string> _abilities, std::vector<int> _myHealthChanges,
-              std::vector<int> _opponentHealthChanges, std::vector<int> _cardDraws) :
-            opponentHand(_opponentHand), opponentActions(_opponentActions),
-            opponentCards(_opponentCards), cardCount(_cardCount), cardNumbers(_cardNumbers),
-            instanceIds(_instanceIds), locations(_locations), cardTypes(_cardTypes), costs(_costs),
-            attacks(_attacks), defenses(_defenses), myHealthChanges(_myHealthChanges), 
-            opponentHealthChanges(_opponentHealthChanges), cardDraws(_cardDraws) { }
-        
-        auto getOpponentHand() const -> int {
-            return this->opponentHand;
-        }
-        
-        auto getOpponentActions() const -> int {
-            return this->opponentActions;
-        }
-        
-        auto getOpponentCards() const -> std::vector<std::string> {
-            return this->opponentCards;
-        }
-        
-        auto getCardCount() const -> int {
-            return this->cardCount;
-        }
-        
-        auto getCardNumbers() const -> std::vector<int> {
-            return this->cardNumbers;
-        }
-        
-        auto getInstanceIds() const -> std::vector<int> {
-            return this->instanceIds;
-        }
-        
-        auto getLocations() const -> std::vector<int> {
-            return this->locations;
-        }
-        
-        auto getCardTypes() const -> std::vector<int> {
-            return this->cardTypes;
-        }
-        
-        auto getCosts() const -> std::vector<int> {
-            return this->costs;
-        }
-        
-        auto getAttacks() const -> std::vector<int> {
-            return this->attacks;
-        }
-        
-        auto getDefenses() const -> std::vector<int> {
-            return this->defenses;
-        }
-        
-        auto getAbilities() const -> std::vector<std::string> {
-            return this->abilities;
-        }
-        
-        auto getMyHealthChanges() const -> std::vector<int> {
-            return this->myHealthChanges;
-        }
-        
-        auto getOpponentHealthChanges() const -> std::vector<int> {
-            return this->opponentHealthChanges;
-        }
-        
-        auto getCardDraws() const -> std::vector<int> {
-            return this->cardDraws;
-        }
-    
-    private:
-        int opponentHand, opponentActions;
-        std::vector<std::string> opponentCards;
-        int cardCount;
-        std::vector<int> cardNumbers, instanceIds, locations, cardTypes, costs, attacks, defenses;
-        std::vector<std::string> abilities;
-        std::vector<int> myHealthChanges, opponentHealthChanges, cardDraws;
-    
-};
-
 class Card {
 
     public:
@@ -195,8 +108,46 @@ class Card {
     private:
         int number, instanceId, location, type, cost, attack, defense;
         std::string ability;
-        int myHealthChange, opponentHealthChange, draws;
+        int myHealthChange, opponentHealthChange, draw;
 
+};
+
+class State {
+    
+    public:
+        State() { }
+    
+        State(int _opponentHand, int _opponentActions, std::vector<std::string> _opponentCards,
+              int _cardCount, std::vector<Card> _cards) :
+            opponentHand(_opponentHand), opponentActions(_opponentActions),
+            opponentCards(_opponentCards), cardCount(_cardCount), cards(_cards) { }
+        
+        auto getOpponentHand() const -> int {
+            return this->opponentHand;
+        }
+        
+        auto getOpponentActions() const -> int {
+            return this->opponentActions;
+        }
+        
+        auto getOpponentCards() const -> std::vector<std::string> {
+            return this->opponentCards;
+        }
+        
+        auto getCardCount() const -> int {
+            return this->cardCount;
+        }
+        
+        auto getCards() const -> std::vector<Card> {
+            return this->cards;
+        }
+    
+    private:
+        int opponentHand, opponentActions;
+        std::vector<std::string> opponentCards;
+        int cardCount;
+        std::vector<Card> cards;
+    
 };
 
 class Game {
@@ -208,7 +159,6 @@ class Game {
         static bool running;
         static Players players;
         static State state;
-        static std::vector<Card> cards;
         
         static auto readDataForCurrentTurn() -> void {
             currentTurn++;
@@ -226,20 +176,19 @@ class Game {
                 opponentCards.push_back(opponentCard);
             }
             int cardCount;
+            std::vector<Card> cards;
             std::cin >> cardCount; std::cin.ignore();
             for (int i = 0; i < cardCount; ++i) {
-                int _cardNumber, _instanceId, _location, _cardType, _cost, _attack, _defense;
-                std::string _abilities;
-                int _myHealthChange, _opponentHealthChange, _cardDraw;
-                std::cin >> _cardNumber >> _instanceId >> _location >> _cardType >> _cost
-                         >> _attack >> _defense >> _abilities >> _myHealthChange
-                         >> _opponentHealthChange >> _cardDraw; std::cin.ignore();
-                cards.push_back(Card(_cardNumber, _instanceId, _location, _cardType, _cost, _attack,
-                                     _defense, _abilities, _myHealthChange, _opponentHealthChange, _draw));                
+                int cardNumber, instanceId, location, cardType, cost, attack, defense;
+                std::string abilities;
+                int myHealthChange, opponentHealthChange, cardDraw;
+                std::cin >> cardNumber >> instanceId >> location >> cardType >> cost
+                         >> attack >> defense >> abilities >> myHealthChange
+                         >> opponentHealthChange >> cardDraw; std::cin.ignore();
+                cards.push_back(Card(cardNumber, instanceId, location, cardType, cost, attack, 
+                                     defense, abilities, myHealthChange, opponentHealthChange, draw));                
             }
-            state = State(opponentHand, opponentActions, opponentCards, cardCount, cardNumbers,
-                          instanceIds, locations, cardTypes, costs, attacks, defenses, abilities,
-                          myHealthChanges, opponentHealthChanges, cardDraws);
+            state = State(opponentHand, opponentActions, opponentCards, cardCount, cards);
         }
         
         static auto isDraftingPhase() -> bool {
@@ -256,6 +205,12 @@ class Action {
                 return;
             }
 
+
+            // Card bestChoice;
+
+            for (auto card : Game::cards) {
+                std::cerr << "card #" << card.number << " " << card.cost << "\n";
+            }
         }
 
         static auto gameplayStrategy() -> void {
