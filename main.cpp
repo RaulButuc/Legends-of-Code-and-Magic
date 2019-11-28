@@ -201,15 +201,16 @@ class Action {
     
     public:
         static auto draftingStrategy() -> void {
-            if (Game::state.cardCount != 3) {
+            if (Game::state.getCardCount() != 3) {
+                std::cerr << "This is NOT the drafting phase. This is the battle phase!";
                 return;
             }
+            
+            Card bestChoice;
+            std::vector<Card> cards = Game::state.getCards();
 
-
-            // Card bestChoice;
-
-            for (auto card : Game::cards) {
-                std::cerr << "card #" << card.number << " " << card.cost << "\n";
+            for (auto card : cards) {
+                std::cerr << "card #" << card.getNumber() << " " << card.getCost() << "\n";
             }
         }
 
@@ -231,7 +232,6 @@ int Game::currentTurn = 0;
 bool Game::running = true;
 Players Game::players = Players(Player(), Player());
 State Game::state = State();
-std::vector<Card> Game::cards = std::vector<Card>();
 
 Game game;
 
@@ -239,10 +239,10 @@ auto main() -> int {
     while (Game::running) {
         Game::readDataForCurrentTurn();
         if (Game::isDraftingPhase()) {
-            std::cout << Action::draftingStrategy() << std::endl;
+            Action::draftingStrategy();
         }
         else {
-            std::cout << Action::gameplayStrategy()<< std::endl;
+            Action::gameplayStrategy();
         }
     }
 }
