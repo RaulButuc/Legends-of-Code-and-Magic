@@ -62,11 +62,10 @@ class Card {
 
         Card(int _number, int _instanceId, int _location, int _type, int _cost, int _attack,
              int _defense, std::string _ability, int _myHealthChange, int _opponentHealthChange,
-             int _draw, bool _canUse) : 
+             int _draw) : 
              number(_number), instanceId(_instanceId), location(_location), type(_type), cost(_cost),
              attack(_attack), defense(_defense), ability(_ability), myHealthChange(_myHealthChange),
              opponentHealthChange(_opponentHealthChange), draw(_draw) {
-            // Card has "Charge" ability, meaning we can use it during the same turn we summon it.
             canUse = hasAbility('C') ? true : false;
         }
 
@@ -122,18 +121,40 @@ class Card {
             this->canUse = _canUse;
         }
 
-        auto costAverageFn() const -> int {
-            return (2 * (3 * this->attack + this->defense) / 4 ) / std::pow(this->cost, 2);
+        auto costAverageFn() -> int {
+            switch (this->type) {
+                case 0:
+                    // creature - basic mathematical model to determine effectiveness
+                    return (20 * this->attack + 10 * this->defense) / std::pow(this->cost, 2)
+                            + extrasFn();
+
+                case 1:
+                    // green item - targets active player creatures (positive effect)
+                    return 25 * (this->attack + this->defense) / std::pow(this->cost, 2);
+
+                case 2:
+                    // red item - targets opponent creatures (negative effect)
+                    return -25 * (this->attack + this->defense) / std::pow(this->cost, 2);
+
+                case 3:
+                    // blue item - target identifier -1 - give player positive effect or
+                    //             damage the opponent (cards with negative defense can also
+                    //             target enemy creatures)
+                    return -50 * this->defense / std::pow(this->cost, 2);
+
+                default:
+                    break;
+            }
+            return 0;
         }
 
         auto guardianFn() -> int {
-            // If the card is a "Guardian" we compute the cost-average function differently
-            // relying mostly on the HP of the card, making sure it can survive a few rounds.
-            if (hasAbility('G')) {
-                return (2 * (this->attack + 3 * this->defense) / 4) / std::pow(this->cost, 2);
-            }
-            
-            return 0;
+            return hasAbility('G') && this->type == 0 ?
+                    (5 * this->attack + 45 * this->defense) / std::pow(this->cost, 2) + extrasFn() : 0;
+        }
+
+        auto extrasFn() -> int {
+            return 10 * (this->myHealthChange - this->opponentHealthChange + this->draw);
         }
 
         auto hasAbility(char _abilityType) -> bool {
@@ -236,9 +257,8 @@ class Game {
 class Action {
     
     private:
-        static auto summonCards(int _freeSlots, int _manaLevel, std::vector<Card> _cards)
-                -> std::vector<std::string> {
-            // TODO: improve the logic for summoning now that cards have abilities
+        static auto summonCards(int _freeSlots, int _manaLevel, std::vector<Card> _cards,
+                std::vector<Card> &_cardsOnBoard, std::vector<Card> _cardsOnEnemyBoard) -> std::vector<std::string> {
             std::vector<std::string> summons;
 
             if (_freeSlots > 0) {
@@ -251,15 +271,44 @@ class Action {
                 for (auto _card : _cards) {
                     int manaCost = _card.getCost();
                     if (_manaLevel >= manaCost) {
-                        summons.push_back("SUMMON " + std::to_string(_card.getInstanceId()));
-                        _manaLevel -= manaCost;
-                        _freeSlots--;
+                        int _target = -1;
+                        switch (_card.getType()) {
+                            case 0:
+                                summons.push_back("SUMMON " + std::to_string(_card.getInstanceId()));
+                                _manaLevel -= manaCost;
+                                _freeSlots--;
+                                if (_card.hasAbility('C')) {
+                                    _cardsOnBoard.push_back(_card);
+                                }
+                                break;
 
-                        // We just summoned a card. Check if it can be used straight away
-                        // (in case it is a "Charge" card)
-                        if (_card.getCanUse()) {
-                            // TODO: Update the logic in a more coherent way
-                            summons.push_back("ATTACK " + std::to_string(_card.getInstanceId()) + " -1");
+                            case 1:
+                                _target = _cardsOnBoard.begin() != _cardsOnBoard.end() ? _cardsOnBoard.begin()->getInstanceId() : -1;
+                                if (_target >= 0) {
+                                    summons.push_back("USE " + std::to_string(_card.getInstanceId()) +
+                                                      " " + std::to_string(_target));
+                                    _manaLevel -= manaCost;
+                                }
+                                break;
+
+                            case 2:
+                                _target = _cardsOnEnemyBoard.rbegin() != _cardsOnEnemyBoard.rend() ? _cardsOnEnemyBoard.rbegin()->getInstanceId() : -1;
+                                if (_target >= 0) {
+                                    summons.push_back("USE " + std::to_string(_card.getInstanceId()) +
+                                                      " " + std::to_string(_target));
+                                    _manaLevel -= manaCost;
+                                }
+                                break;
+
+                            case 3:
+                                summons.push_back("USE " + std::to_string(_card.getInstanceId()) +
+                                                  " " + std::to_string(_target));
+                                _manaLevel -= manaCost;
+                                break;
+
+                            default:
+                                break;
+
                         }
                     }
                 }
@@ -268,49 +317,41 @@ class Action {
             return summons;
         }
 
-
         /**
-         *   To be replaced by a Monte Carlo search strategy after Gold league.
+         *   To be replaced by a Monte-Carlo search strategy after Gold league.
          **/
         static auto attackCards(std::vector<Card> _myCards, std::vector<Card> _enemyCards)
                 -> std::vector<std::string> {
             std::vector<std::string> attacks;
-            
+            std::vector<Card> enemyGuards;
             if (_myCards.size() > 0) {
-                if (_enemyCards.size() > 0) {
+                if (_enemyCards.size() > 0) {                    
                     for (auto _card : _enemyCards) {
                         if (_card.hasAbility('G')) {
-
-                            // Enemy has a guardian card. We must find the smallest amount of
-                            // moves to perform (attacks) in order to destroy the guardian.
-                            // Solution uses a dyamic programming approach
-                            
-                            std::vector<Card> cardsAttackGuard;
-                            int minSum[7][13];
-                            minSum[0][0] = 0;
-                            for (auto i = 0; i <= 12; ++i) {
-                                minSum[0][i] = INT_MAX;
-                            }
-                            for (auto i = 1; i <= 6; ++i) {
-                                for (auto j = 0; j <= 12; ++i) {
-                                    minSum[i][j] = std::min(INT_MAX, dp[i - 1, j], 1 + dp[i - 1][j - _myCards.at(i).getAttack()]);
-                                }
-                            }
-
-                            for (const auto &card : cardsAttackGuard) {
-                                attacks.push_back("ATTACK " + std::to_string(card.getInstanceId()) +
-                                                  " " + std::to_string(_card.getInstanceId()));
-                            }
-                        }
-                        else {
-                            for (auto __card : _myCards) {
-                                attacks.push_back("ATTACK " + std::to_string(__card.getInstanceId()) + " -1");
-                            }
+                            enemyGuards.push_back(_card);
                         }
                     }
                 }
-                else {
-                    for (const auto &_card : _myCards) {
+                
+                for (auto _guard : enemyGuards) {
+                    int index = 0;
+                    int defense = _guard.getDefense();
+                    int guardId = _guard.getInstanceId();
+                    while (defense > 0 && index < _myCards.size()) {
+                        auto card = _myCards[index];
+                        if (card.getCanUse()) {
+                            int attack = card.getAttack();
+                            attacks.push_back("ATTACK " + std::to_string(card.getInstanceId()) + 
+                                              " " + std::to_string(guardId));
+                            defense -= attack;
+                            index++;
+                            card.setCanUse(false);
+                        }
+                    }
+                }
+
+                for (auto _card : _myCards) {
+                    if (_card.getCanUse()) { 
                         attacks.push_back("ATTACK " + std::to_string(_card.getInstanceId()) + " -1");
                     }
                 }
@@ -359,7 +400,8 @@ class Action {
             Card _card = cards[_pos];
             
             for (auto pos = 1; pos < cards.size(); ++pos) {
-                if (_card.costAverageFn() < cards[pos].costAverageFn()) {
+                if (_card.costAverageFn() < cards[pos].costAverageFn() ||
+                        _card.guardianFn() < cards[pos].guardianFn()) {
                     _card = cards[pos];
                     _pos = pos;
                 }
@@ -396,7 +438,7 @@ class Action {
             }
 
             int freeSlots = 6 - cardsOnBoard.size();
-            std::vector<std::string> summons = Action::summonCards(freeSlots, manaLevel, cardsInHand);
+            std::vector<std::string> summons = Action::summonCards(freeSlots, manaLevel, cardsInHand, cardsOnBoard, cardsOnEnemyBoard);
             std::vector<std::string> attacks = Action::attackCards(cardsOnBoard, cardsOnEnemyBoard);
 
             Action::performActions(summons, attacks);
