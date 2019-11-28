@@ -1,6 +1,8 @@
 /**
   *  Legends of Code and Magic - https://www.codingame.com/ide/puzzle/legends-of-code-magic
   *
+  *  Code is a bit messy due to the "all-in-one-file" and "class precedence" rules.
+  *  
   *  @author Raul Butuc
   *  @version 1.0.0
   */
@@ -107,7 +109,7 @@ class Card {
         }
 
         auto costAverageFn() const -> int {
-            return 2 * (this->attack + this->defense) / std::pow(this->cost, 2);
+            return (2 * (3 * this->attack + this->defense) / 4 ) / std::pow(this->cost, 2);
         }
 
     private:
@@ -216,8 +218,6 @@ class Action {
             Card _card = cards[_pos];
             
             for (auto pos = 1; pos < cards.size(); ++pos) {
-                std::cerr << cards[pos].getAttack() << "," << cards[pos].getDefense() << "," << cards[pos].getCost() << "\n";
-                std::cerr << _card.costAverageFn() << " vs " << cards[pos].costAverageFn() << "\n";
                 if (_card.costAverageFn() < cards[pos].costAverageFn()) {
                     _card = cards[pos];
                     _pos = pos;
@@ -228,15 +228,118 @@ class Action {
         }
 
         static auto gameplayStrategy() -> void {
-            // TODO: choose between aggressive or defensive based on a deterministic approach
+            // Currently using only aggressive strategy - trials
+            Action::aggressiveStrategy();
         }
 
         static auto aggressiveStrategy() -> void {
             // TODO: maximize the damage output towards the enemy player (ignore enemy cards)
+            int numCardsInDeck = Game::players.self.getDeck();
+            int manaLevel = Game::players.self.getMana();
+            int numCards = Game::state.getCardCount();
+            std::vector<Card> cards, cardsInHand, cardsOnBoard;
+            cards = Game::state.getCards();
+
+            for (auto card : cards) {
+                int location = card.getLocation();
+                switch (location) {
+                    case 0:
+                        cardsInHand.push_back(card); 
+                        break;
+
+                    case 1:
+                        cardsOnBoard.push_back(card);
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+
+            int freeSlots = 6 - cardsOnBoard.size();
+            std::vector<std::string> summons = Action::summonCards(freeSlots, manaLevel, cardsInHand);
+            std::vector<std::string> attacks = Action::attackCards(cardsOnBoard);
+
+            Action::performActions(summons, attacks);
         }
 
         static auto defensiveStrategy() -> void {
             // TODO: minimize the damage taken from the enemy player's cards
+        }
+
+        static auto summonCards(int _freeSlots, int _manaLevel, std::vector<Card> _cards)
+                -> std::vector<std::string> {
+            std::vector<std::string> summons;
+
+            if (_freeSlots > 0) {
+                std::sort(_cards.begin(), _cards.end(),
+                          [](const Card &_card_A, const Card &_card_B) -> bool {
+                              return _card_A.costAverageFn() > _card_B.costAverageFn();
+                          });
+
+                for (auto _card : _cards) {
+                    int manaCost = _card.getCost();
+                    if (_manaLevel >= manaCost) {
+                        summons.push_back("SUMMON " + std::to_string(_card.getInstanceId()));
+                        _manaLevel -= manaCost;
+                        _freeSlots--;
+                    }
+                }
+            }
+
+            return summons;
+        }
+
+        static auto attackCards(std::vector<Card> _cards) -> std::vector<std::string> {
+            std::vector<std::string> attacks;
+            
+            if (_cards.size() > 0) {
+                for (auto _card : _cards) {
+                    attacks.push_back("ATTACK " + std::to_string(_card.getInstanceId()) + " -1");
+                }
+            }
+
+            return attacks;
+        }
+
+        static auto performActions(std::vector<std::string> _summons,
+                                   std::vector<std::string> _attacks) -> void {
+            int numSummons = _summons.size();
+            int numAttacks = _attacks.size();
+
+            if (numSummons == 0 && numAttacks == 0) {
+                std::cout << "PASS" << "\n";
+                return;
+            }
+
+            if (numSummons == 1) {
+                std::cout << _summons[0] << "\n";
+            }
+            else {
+                for (auto id = 0; id < numSummons - 1; ++id) {
+                    std::cout << _summons[id] << "; ";
+                }
+
+                if (numAttacks == 0) {
+                    std::cout << _summons[numSummons - 1] << "\n";
+                    return;
+                }
+                else {
+                    std::cout << _summons[numSummons - 1] << "; ";
+                }
+            }
+
+            if (numAttacks == 1) {
+                std::cout << _attacks[0] << "\n";
+            }
+            else {
+                for (auto id = 0; id < numAttacks - 1; ++id) {
+                    std::cout << _attacks[id] << "; ";
+                }
+
+                std::cout << _attacks[numAttacks - 1] << "\n";
+                return;
+            }
         }
     
 };
