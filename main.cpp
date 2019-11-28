@@ -313,6 +313,10 @@ class Action {
                         cardsOnBoard.push_back(card);
                         break;
 
+                    case -1:
+                        // Add funcitonality for cardsOnEnemyBoard 
+                        break;
+
                     default:
                         break;
                 }
@@ -331,8 +335,6 @@ int Game::currentTurn = 0;
 bool Game::running = true;
 Players Game::players = Players(Player(), Player());
 State Game::state = State();
-
-Game game;
 
 auto main() -> int {
     while (Game::running) {
