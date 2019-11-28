@@ -2,7 +2,9 @@
   *  Legends of Code and Magic - https://www.codingame.com/ide/puzzle/legends-of-code-magic
   *
   *  Code is a bit messy due to the "all-in-one-file" and "class precedence" rules.
-  *  
+  * 
+  *  WIP (Work-in-Progress) - Final version will use a Monte-Carlo (or better) search/simulation approach. 
+  * 
   *  @author Raul Butuc
   *  @version 1.0.0
   */
@@ -208,35 +210,6 @@ class Game {
 class Action {
     
     private:
-        static auto formatPrint(std::vector<std::string> _actions) -> void {
-            auto sep = ";";
-            auto delim = "";
-            for (const auto &action : _actions) {
-                std::cout << delim << action;
-                delim = sep;
-            }
-        }
-
-    public:
-        static auto draftingStrategy() -> void {
-            std::vector<Card> cards = Game::state.getCards();
-            int _pos = 0;
-            Card _card = cards[_pos];
-            
-            for (auto pos = 1; pos < cards.size(); ++pos) {
-                if (_card.costAverageFn() < cards[pos].costAverageFn()) {
-                    _card = cards[pos];
-                    _pos = pos;
-                }
-            }
-
-            std::cout << "PICK " << _pos << "\n";
-        }
-
-        static auto gameplayStrategy() -> void {
-            Action::aggressiveStrategy();
-        }
-
         static auto aggressiveStrategy() -> void {
             int numCardsInDeck = Game::players.self.getDeck();
             int manaLevel = Game::players.self.getMana();
@@ -328,6 +301,37 @@ class Action {
                 Action::formatPrint(_attacks);
                 std::cout << "\n";
             }
+        }
+
+        static auto formatPrint(std::vector<std::string> _actions) -> void {
+            auto sep = ";";
+            auto delim = "";
+            for (const auto &action : _actions) {
+                std::cout << delim << action;
+                delim = sep;
+            }
+        }
+
+    public:
+        static auto draftingStrategy() -> void {
+            std::vector<Card> cards = Game::state.getCards();
+            int _pos = 0;
+            Card _card = cards[_pos];
+            
+            for (auto pos = 1; pos < cards.size(); ++pos) {
+                if (_card.costAverageFn() < cards[pos].costAverageFn()) {
+                    _card = cards[pos];
+                    _pos = pos;
+                }
+            }
+
+            std::cout << "PICK " << _pos << "\n";
+        }
+
+        static auto gameplayStrategy() -> void {
+            // For now assume an aggressive strategy: only attack enemy card
+            // if it blocks us from attacking the player directly
+            Action::aggressiveStrategy();
         }
     
 };
