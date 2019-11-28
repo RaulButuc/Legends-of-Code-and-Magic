@@ -10,6 +10,7 @@
   */
 
 #include <iostream>
+#include <map>
 #include <cmath>
 #include <climits>
 #include <utility>
@@ -19,6 +20,20 @@
 
 #define self first
 #define enemy second
+
+
+// Based on prior simulations we can get a priority list to use while in the draft phase
+std::map<int, int> cardPriorityById;
+std::vector<int> cardPriority {
+    68, 7, 65, 49, 116, 69, 151, 48, 53, 51, 44, 67, 29, 139, 84, 18, 158, 28, 64, 80, 33, 85,
+    32, 147, 103, 37, 54, 52, 50, 99, 23, 87, 66, 81, 148, 88, 150, 121, 82, 95, 115, 133, 152,
+    19, 109, 157, 105, 3, 75, 96, 114, 9, 106, 144, 129, 17, 111, 128, 12, 11, 145, 15, 21, 8,
+    134, 155, 141, 70, 90, 135, 104, 41, 112, 61, 5, 97, 26, 34, 73, 6, 36, 86, 77, 83, 13, 89,
+    79, 93, 149, 59, 159, 74, 94, 38, 98, 126, 39, 30, 137, 100, 62, 122, 22, 72, 118, 1, 47, 71,
+    4, 91, 27, 56, 119, 101, 45, 16, 146, 58, 120, 142, 127, 25, 108, 132, 40, 14, 76, 125, 102,
+    131, 123, 2, 35, 130, 107, 43, 63, 31, 138, 124, 154, 78, 46, 24, 10, 136, 113, 60, 57, 92,
+    117, 42, 55, 153, 20, 156, 143, 110, 160, 140
+};
 
 class Player {
   
@@ -124,22 +139,16 @@ class Card {
         auto costAverageFn() -> int {
             switch (this->type) {
                 case 0:
-                    // creature - basic mathematical model to determine effectiveness
                     return (20 * this->attack + 10 * this->defense) / std::pow(this->cost, 2)
                             + extrasFn();
 
                 case 1:
-                    // green item - targets active player creatures (positive effect)
                     return 25 * (this->attack + this->defense) / std::pow(this->cost, 2);
 
                 case 2:
-                    // red item - targets opponent creatures (negative effect)
                     return -25 * (this->attack + this->defense) / std::pow(this->cost, 2);
 
                 case 3:
-                    // blue item - target identifier -1 - give player positive effect or
-                    //             damage the opponent (cards with negative defense can also
-                    //             target enemy creatures)
                     return -50 * this->defense / std::pow(this->cost, 2);
 
                 default:
@@ -154,8 +163,11 @@ class Card {
         }
 
         auto extrasFn() -> int {
-            return 10 * (this->myHealthChange - this->opponentHealthChange + this->draw);
+            return hasAbility('C') || hasAbility('D') || hasAbility('L') || hasAbility('W') ? 
+                    5 : 2 * (this->myHealthChange - this->opponentHealthChange + this->draw);
         }
+
+        
 
         auto hasAbility(char _abilityType) -> bool {
             return this->ability.find(_abilityType);
@@ -396,18 +408,9 @@ class Action {
     public:
         static auto draftingStrategy() -> void {
             std::vector<Card> cards = Game::state.getCards();
-            int _pos = 0;
-            Card _card = cards[_pos];
-            
-            for (auto pos = 1; pos < cards.size(); ++pos) {
-                if (_card.costAverageFn() < cards[pos].costAverageFn() ||
-                        _card.guardianFn() < cards[pos].guardianFn()) {
-                    _card = cards[pos];
-                    _pos = pos;
-                }
-            }
-
-            std::cout << "PICK " << _pos << "\n";
+            std::cout << "PICK " << std::min(cardPriorityById[cards.at(2).getNumber()],
+                cardPriorityById[cards.at(0).getNumber()] < cardPriorityById[cards.at(1).getNumber()] ? 
+                0 : 1) <<  "\n";
         }
 
         static auto gameplayStrategy() -> void {
@@ -452,6 +455,9 @@ Players Game::players = Players(Player(), Player());
 State Game::state = State();
 
 auto main() -> int {
+    for (int id = 0; id < cardPriority.size(); ++id) {
+        cardPriorityById.insert(std::make_pair(cardPriority.at(id), id));
+    }
     while (Game::running) {
         Game::readDataForCurrentTurn();
         if (Game::isDraftingPhase()) {
