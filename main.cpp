@@ -201,8 +201,7 @@ class Game {
         }
         
         static auto isDraftingPhase() -> bool {
-            return currentTurn <= 30 && players.self.getMana() == 0 && players.enemy.getMana() == 0
-                && state.getOpponentHand() == 0 && state.getOpponentActions() == 0;
+            return currentTurn <= 30;
         }
     
 };
@@ -210,42 +209,9 @@ class Game {
 class Action {
     
     private:
-        static auto aggressiveStrategy() -> void {
-            int numCardsInDeck = Game::players.self.getDeck();
-            int manaLevel = Game::players.self.getMana();
-            int numCards = Game::state.getCardCount();
-            std::vector<Card> cards, cardsInHand, cardsOnBoard;
-            cards = Game::state.getCards();
-
-            for (auto card : cards) {
-                int location = card.getLocation();
-                switch (location) {
-                    case 0:
-                        cardsInHand.push_back(card); 
-                        break;
-
-                    case 1:
-                        cardsOnBoard.push_back(card);
-                        break;
-
-                    default:
-                        break;
-                }
-            }
-
-            int freeSlots = 6 - cardsOnBoard.size();
-            std::vector<std::string> summons = Action::summonCards(freeSlots, manaLevel, cardsInHand);
-            std::vector<std::string> attacks = Action::attackCards(cardsOnBoard);
-
-            Action::performActions(summons, attacks);
-        }
-
-        static auto defensiveStrategy() -> void {
-            // TODO: minimize the damage taken from the enemy player's cards (attack them first)
-        }
-
         static auto summonCards(int _freeSlots, int _manaLevel, std::vector<Card> _cards)
                 -> std::vector<std::string> {
+            // TODO: improve the logic for summoning now that cards have abilities
             std::vector<std::string> summons;
 
             if (_freeSlots > 0) {
@@ -268,6 +234,7 @@ class Action {
         }
 
         static auto attackCards(std::vector<Card> _cards) -> std::vector<std::string> {
+            // TODO: improve the logic for attacking now that cards have abilities
             std::vector<std::string> attacks;
             
             if (_cards.size() > 0) {
@@ -329,9 +296,33 @@ class Action {
         }
 
         static auto gameplayStrategy() -> void {
-            // For now assume an aggressive strategy: only attack enemy card
-            // if it blocks us from attacking the player directly
-            Action::aggressiveStrategy();
+            int numCardsInDeck = Game::players.self.getDeck();
+            int manaLevel = Game::players.self.getMana();
+            int numCards = Game::state.getCardCount();
+            std::vector<Card> cards, cardsInHand, cardsOnBoard;
+            cards = Game::state.getCards();
+
+            for (auto card : cards) {
+                int location = card.getLocation();
+                switch (location) {
+                    case 0:
+                        cardsInHand.push_back(card); 
+                        break;
+
+                    case 1:
+                        cardsOnBoard.push_back(card);
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+
+            int freeSlots = 6 - cardsOnBoard.size();
+            std::vector<std::string> summons = Action::summonCards(freeSlots, manaLevel, cardsInHand);
+            std::vector<std::string> attacks = Action::attackCards(cardsOnBoard);
+
+            Action::performActions(summons, attacks);
         }
     
 };
