@@ -56,10 +56,10 @@ class Card {
 
         Card(int _number, int _instanceId, int _location, int _type, int _cost, int _attack,
              int _defense, std::string _ability, int _myHealthChange, int _opponentHealthChange,
-             int _draws) : 
+             int _draw) : 
              number(_number), instanceId(_instanceId), location(_location), type(_type), cost(_cost),
              attack(_attack), defense(_defense), ability(_ability), myHealthChange(_myHealthChange),
-             opponentHealthChange(_opponentHealthChange), draws(_draws) { }
+             opponentHealthChange(_opponentHealthChange), draw(_draw) { }
 
         auto getNumber() const -> int {
             return this->number;
