@@ -171,9 +171,9 @@ class Game {
             currentTurn++;
             int health, mana, deck, rune, draw;
             std::cin >> health >> mana >> deck >> rune >> draw; std::cin.ignore();
-            players.first = Player(health, mana, deck, rune, draw);
+            players.self = Player(health, mana, deck, rune, draw);
             std::cin >> health >> mana >> deck >> rune >> draw; std::cin.ignore();
-            players.second = Player(health, mana, deck, rune, draw);
+            players.enemy = Player(health, mana, deck, rune, draw);
             int opponentHand, opponentActions;
             std::vector<std::string> opponentCards;
             std::cin >> opponentHand >> opponentActions; std::cin.ignore();
@@ -199,20 +199,26 @@ class Game {
         }
         
         static auto isDraftingPhase() -> bool {
-            return players.self.getMana() == 0 && players.enemy.getMana() == 0;
+            return currentTurn <= 30 && players.self.getMana() == 0 && players.enemy.getMana() == 0
+                && state.getOpponentHand() == 0 && state.getOpponentActions() == 0;
         }
     
 };
 
 class Action {
     
+    private:
+        static auto formatPrint(std::vector<std::string> _actions) -> void {
+            auto sep = ";";
+            auto delim = "";
+            for (const auto &action : _actions) {
+                std::cout << delim << action;
+                delim = sep;
+            }
+        }
+
     public:
         static auto draftingStrategy() -> void {
-            if (Game::state.getCardCount() != 3) {
-                std::cerr << "This is NOT the drafting phase. This is the battle phase!";
-                return;
-            }
-
             std::vector<Card> cards = Game::state.getCards();
             int _pos = 0;
             Card _card = cards[_pos];
@@ -228,12 +234,10 @@ class Action {
         }
 
         static auto gameplayStrategy() -> void {
-            // Currently using only aggressive strategy - trials
             Action::aggressiveStrategy();
         }
 
         static auto aggressiveStrategy() -> void {
-            // TODO: maximize the damage output towards the enemy player (ignore enemy cards)
             int numCardsInDeck = Game::players.self.getDeck();
             int manaLevel = Game::players.self.getMana();
             int numCards = Game::state.getCardCount();
@@ -264,7 +268,7 @@ class Action {
         }
 
         static auto defensiveStrategy() -> void {
-            // TODO: minimize the damage taken from the enemy player's cards
+            // TODO: minimize the damage taken from the enemy player's cards (attack them first)
         }
 
         static auto summonCards(int _freeSlots, int _manaLevel, std::vector<Card> _cards)
@@ -309,36 +313,20 @@ class Action {
 
             if (numSummons == 0 && numAttacks == 0) {
                 std::cout << "PASS" << "\n";
-                return;
             }
-
-            if (numSummons == 1) {
-                std::cout << _summons[0] << "\n";
+            else if (numSummons > 0 && numAttacks == 0) {
+                Action::formatPrint(_summons);
+                std::cout << "\n";
             }
-            else {
-                for (auto id = 0; id < numSummons - 1; ++id) {
-                    std::cout << _summons[id] << "; ";
-                }
-
-                if (numAttacks == 0) {
-                    std::cout << _summons[numSummons - 1] << "\n";
-                    return;
-                }
-                else {
-                    std::cout << _summons[numSummons - 1] << "; ";
-                }
-            }
-
-            if (numAttacks == 1) {
-                std::cout << _attacks[0] << "\n";
+            else if (numSummons == 0 && numAttacks > 0) {
+                Action::formatPrint(_attacks);
+                std::cout << "\n";
             }
             else {
-                for (auto id = 0; id < numAttacks - 1; ++id) {
-                    std::cout << _attacks[id] << "; ";
-                }
-
-                std::cout << _attacks[numAttacks - 1] << "\n";
-                return;
+                Action::formatPrint(_summons);
+                std::cout << ";";
+                Action::formatPrint(_attacks);
+                std::cout << "\n";
             }
         }
     
