@@ -6,6 +6,7 @@
   */
 
 #include <iostream>
+#include <cmath>
 #include <utility>
 #include <string>
 #include <vector>
@@ -103,6 +104,10 @@ class Card {
 
         auto getDraw() const -> int {
             return this->draw;
+        }
+
+        auto costAverageFn() const -> int {
+            return 2 * (this->attack + this->defense) / std::pow(this->cost, 2);
         }
 
     private:
@@ -205,13 +210,21 @@ class Action {
                 std::cerr << "This is NOT the drafting phase. This is the battle phase!";
                 return;
             }
-            
-            Card bestChoice;
-            std::vector<Card> cards = Game::state.getCards();
 
-            for (auto card : cards) {
-                std::cerr << "card #" << card.getNumber() << " " << card.getCost() << "\n";
+            std::vector<Card> cards = Game::state.getCards();
+            int _pos = 0;
+            Card _card = cards[_pos];
+            
+            for (auto pos = 1; pos < cards.size(); ++pos) {
+                std::cerr << cards[pos].getAttack() << "," << cards[pos].getDefense() << "," << cards[pos].getCost() << "\n";
+                std::cerr << _card.costAverageFn() << " vs " << cards[pos].costAverageFn() << "\n";
+                if (_card.costAverageFn() < cards[pos].costAverageFn()) {
+                    _card = cards[pos];
+                    _pos = pos;
+                }
             }
+
+            std::cout << "PICK " << _pos << "\n";
         }
 
         static auto gameplayStrategy() -> void {
